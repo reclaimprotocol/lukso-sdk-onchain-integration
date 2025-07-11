@@ -6,44 +6,7 @@ import "./Random.sol";
 import "./StringUtils.sol";
 import "./BytesUtils.sol";
 
-import "@lukso/lsp-smart-contracts/contracts/LSP0ERC725Account/LSP0ERC725Account.sol";
-
-// import "hardhat/console.sol";
-
-/**
- * @title IProofStorage
- * @dev Interface for the ProofStorage contract that allows storing and retrieving proofs.
- *      A proof is represented by a claim identifier and the corresponding proof data.
- */
-interface IProofStorage {
-
-    /**
-     * @dev Structure to store proof details.
-     * @param claimIdentifier A unique identifier for the claim.
-     * @param data The proof data associated with the claim.
-     */
-    struct Proof {
-        bytes32 claimIdentifier;  // Unique identifier for the claim
-        bytes data;               // Data representing the proof for the claim
-    }
-
-    /**
-     * @dev Stores a proof in the contract.
-     * @param claimIdentifier The unique identifier for the claim.
-     * @param data The proof data to be stored.
-     * @notice This function is intended to be called by external contracts or addresses
-     *         to store proofs in the implementing contract.
-     */
-    function storeProof(bytes32 claimIdentifier, bytes memory data) external;
-
-    /**
-     * @dev Retrieves a stored proof by its claim identifier.
-     * @param claimIdentifier The unique identifier for the claim.
-     * @return The proof associated with the given claim identifier.
-     * @notice This function allows anyone to retrieve the proof data associated with a claim identifier.
-     */
-    function getProof(bytes32 claimIdentifier) external view returns (Proof memory);
-}
+import "./ProofStorage.sol";
 
 /**
  * Reclaim Beacon contract
@@ -95,9 +58,9 @@ contract Reclaim {
 
 
     /**
-	 * Declaring an instance of the ProofStorage interface
+	 * Declaring an instance of the ProofStorage contract
 	 * */
-    IProofStorage public proofStorage;
+    ProofStorage public proofStorage;
 
 
     event EpochAdded(Epoch epoch);
@@ -112,7 +75,7 @@ contract Reclaim {
         epochDurationS = 1 days;
         currentEpoch = 0;
         owner = msg.sender;
-        proofStorage = IProofStorage(_proofStorage);
+        proofStorage = new ProofStorage(address(this));
     }
 
     modifier onlyOwner() {
@@ -217,7 +180,7 @@ contract Reclaim {
         }
 
         // Storing the proof in the ProofStorage contract after verification
-        proofStorage.storeProof(proof.signedClaim.claim.identifier, abi.encode(proof));
+        proofStorage.storeProof(proof.signedClaim.claim.identifier, proof.signedClaim.signatures[0]);
     }
 
 
@@ -256,4 +219,15 @@ contract Reclaim {
         }
         return b - a;
     }
+
+    /**
+     * @dev Retrieves a stored proof by its claim identifier.
+     * @param claimIdentifier The unique identifier for the claim.
+     * @return signature The proof signature associated with the given claim identifier.
+     */
+    function getSignature(bytes32 claimIdentifier) external view returns (bytes memory signature) {
+        signature = proofStorage.getSignature(claimIdentifier);
+    }
+
 }
+
