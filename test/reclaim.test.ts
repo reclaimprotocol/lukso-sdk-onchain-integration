@@ -200,7 +200,7 @@ describe("Reclaim VerifyProof Tests", () => {
 
 describe("Get Proof Data", () => {
   it("should store and retrieve a proof correctly", async function () {
-    let proofContract: any = await deployProofStorageContract(ethers);
+    const { contract } = await loadFixture(deployFixture);
     let [owner, addr1] = await ethers.getSigners();
 
     const claimIdentifier =
@@ -227,47 +227,22 @@ describe("Get Proof Data", () => {
       },
     };
 
-    // Encode the data to bytes
-    const encodedData = ethers.utils.defaultAbiCoder.encode(
-      [
-        "tuple(tuple(string context, string provider, string parameters) claimInfo, tuple(tuple(uint256 epoch, bytes32 identifier, address owner, uint256 timestampS) claim, bytes[] signatures) signedClaim)",
-      ],
-      [data]
-    );
+    const witnesses = [
+        {
+          addr: "0x244897572368eadf65bfbc5aec98d8e5443a9072",
+          host: "https://reclaim-node.questbook.app",
+        },
+      ];
 
-    // Store the proof
-    await proofContract.connect(addr1).storeProof(claimIdentifier, encodedData);
+    await contract.addNewEpoch(witnesses, 1);
+    
+    // Store the proof upon verification
+    await contract.verifyProof(data);
 
-    // Retrieve the proof
-    const proof = await proofContract.getProof(claimIdentifier);
-    // Decode the retrieved data
-    const decodedData = ethers.utils.defaultAbiCoder.decode(
-      [
-        "tuple(tuple(string context, string provider, string parameters) claimInfo, tuple(tuple(uint256 epoch, bytes32 identifier, address owner, uint256 timestampS) claim, bytes[] signatures) signedClaim)",
-      ],
-      proof.data
-    );
+    // Retrieve the proof signature
+    const signature = await contract.getSignature(claimIdentifier);
 
-    // Check if the stored proof matches the retrieved proof
-    expect(proof.claimIdentifier).to.equal(claimIdentifier);
-    expect(decodedData[0].claimInfo.context).to.equal(data.claimInfo.context);
-    expect(decodedData[0].claimInfo.provider).to.equal(data.claimInfo.provider);
-    expect(decodedData[0].claimInfo.parameters).to.equal(
-      data.claimInfo.parameters
-    );
-    expect(decodedData[0].signedClaim.claim.epoch).to.equal(
-      data.signedClaim.claim.epoch
-    );
-    expect(decodedData[0].signedClaim.claim.identifier).to.equal(
-      data.signedClaim.claim.identifier
-    );
-    expect(decodedData[0].signedClaim.claim.owner.toLowerCase()).to.equal(
-      data.signedClaim.claim.owner.toLowerCase()
-    );
-    expect(decodedData[0].signedClaim.claim.timestampS).to.equal(
-      data.signedClaim.claim.timestampS
-    );
-    expect(decodedData[0].signedClaim.signatures[0]).to.equal(
+    expect(signature).to.equal(
       data.signedClaim.signatures[0]
     );
   });
